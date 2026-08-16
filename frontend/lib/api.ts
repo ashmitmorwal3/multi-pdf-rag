@@ -25,13 +25,9 @@ export async function askQuestion(
       },
 
       body: JSON.stringify({
-
         session_id: sessionId,
-
         question: question,
-
         documents: documents,
-
       }),
     }
   );
@@ -64,7 +60,8 @@ export async function askQuestion(
 // ==============================
 
 export async function uploadPDF(
-  file: File
+  file: File,
+  sessionId: string
 ) {
 
   const formData =
@@ -73,6 +70,11 @@ export async function uploadPDF(
   formData.append(
     "file",
     file
+  );
+
+  formData.append(
+    "session_id",
+    sessionId
   );
 
 
@@ -109,13 +111,15 @@ export async function uploadPDF(
 
 
 // ==============================
-// GET ALL UPLOADED DOCUMENTS
+// GET DOCUMENTS FOR SESSION
 // ==============================
 
-export async function getDocuments(): Promise<string[]> {
+export async function getDocuments(
+  sessionId: string
+): Promise<string[]> {
 
   const response = await fetch(
-    `${API_URL}/documents`
+    `${API_URL}/documents?session_id=${encodeURIComponent(sessionId)}`
   );
 
 

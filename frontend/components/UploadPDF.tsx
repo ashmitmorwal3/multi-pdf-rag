@@ -5,18 +5,27 @@ import { useState } from "react";
 import { uploadPDF } from "@/lib/api";
 
 
-export default function UploadPDF() {
+type Props = {
+  sessionId: string;
+};
 
-  const [loading, setLoading] = useState(false);
+export default function UploadPDF({
+  sessionId,
+}: Props) {
 
-  const [message, setMessage] = useState("");
+  const [loading, setLoading] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
 
 
   async function handleUpload(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
 
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
 
     if (!file) {
@@ -24,7 +33,9 @@ export default function UploadPDF() {
     }
 
 
-    if (file.type !== "application/pdf") {
+    if (
+      file.type !== "application/pdf"
+    ) {
 
       setMessage(
         "Please select a PDF file."
@@ -42,7 +53,18 @@ export default function UploadPDF() {
 
     try {
 
-      const data = await uploadPDF(file);
+      console.log(
+        "Uploading PDF for session:",
+        sessionId
+      );
+
+
+      const data =
+        await uploadPDF(
+          file,
+          sessionId
+        );
+
 
       setMessage(
         `${data.filename} uploaded successfully.`
@@ -52,7 +74,11 @@ export default function UploadPDF() {
 
     catch (error) {
 
-      console.error(error);
+      console.error(
+        "PDF upload error:",
+        error
+      );
+
 
       setMessage(
         "PDF upload failed."

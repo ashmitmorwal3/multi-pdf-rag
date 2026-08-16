@@ -23,8 +23,19 @@ from app.database.crud import (
     delete_conversation,
 )
 
+from app.services.retriever import get_retriever
+
+from app.chains.rag_chain import create_rag_chain
+from app.chains.history_chain import create_history_chain
+from app.chains.retrieval_chain import create_chain
+
+
 router = APIRouter()
 
+
+# ============================================================
+# ASK QUESTION
+# ============================================================
 
 @router.post(
     "/ask",
@@ -35,20 +46,32 @@ def ask(
     db: Session = Depends(get_db)
 ):
 
-    # Get existing conversation or create a new one
+    # ========================================================
+    # GET OR CREATE CONVERSATION
+    # ========================================================
+
     conversation = get_or_create_conversation(
         db=db,
         session_id=request.session_id,
         title=request.question
     )
 
-    # Load previous messages
+
+    # ========================================================
+    # LOAD PREVIOUS MESSAGES
+    # ========================================================
+
     messages = get_chat_history(
         db,
         conversation.id
     )
 
-    # Convert database messages to LangChain messages
+
+    # ========================================================
+    # CONVERT DATABASE HISTORY
+    # TO LANGCHAIN MESSAGES
+    # ========================================================
+
     chat_history = []
 
     for message in messages:
@@ -69,7 +92,11 @@ def ask(
                 )
             )
 
-    # Save user message
+
+    # ========================================================
+    # SAVE USER MESSAGE
+    # ========================================================
+
     save_message(
         db,
         conversation.id,
@@ -77,29 +104,89 @@ def ask(
         request.question
     )
 
-    # Run RAG
-    response = state.rag_chain.invoke(
+
+    # ========================================================
+    # CREATE SESSION-SPECIFIC RETRIEVER
+    # ========================================================
+
+    retriever = get_retriever(
+        embeddings=state.embeddings,
+        session_id=request.session_id,
+        documents=request.documents
+    )
+
+
+    # ========================================================
+    # BUILD DOCUMENT CHAIN
+    # ========================================================
+
+    document_chain = create_rag_chain(
+        state.llm
+    )
+
+
+    # ========================================================
+    # BUILD HISTORY-AWARE RETRIEVER
+    # ========================================================
+
+    history_retriever = create_history_chain(
+        state.llm,
+        retriever
+    )
+
+
+    # ========================================================
+    # BUILD RAG CHAIN
+    # ========================================================
+
+    rag_chain = create_chain(
+        history_retriever,
+        document_chain
+    )
+
+
+    # ========================================================
+    # RUN RAG
+    # ========================================================
+
+    response = rag_chain.invoke(
         {
             "input": request.question,
             "chat_history": chat_history
         }
     )
 
+
     answer = response["answer"]
 
-    # Build citations
+
+    # ========================================================
+    # BUILD CITATIONS
+    # ========================================================
+
     sources = []
 
     for doc in response["context"]:
 
         sources.append(
             {
-                "file": doc.metadata.get("source", "Unknown"),
-                "page": doc.metadata.get("page", 0) + 1
+                "file": doc.metadata.get(
+                    "source",
+                    "Unknown"
+                ),
+
+                "page": doc.metadata.get(
+                    "page",
+                    0
+                ) + 1
             }
         )
 
-    # Save AI response
+
+    # ========================================================
+    # SAVE AI RESPONSE
+    # ========================================================
+
     save_message(
         db,
         conversation.id,
@@ -107,11 +194,20 @@ def ask(
         answer
     )
 
+
+    # ========================================================
+    # RETURN RESPONSE
+    # ========================================================
+
     return ChatResponse(
         answer=answer,
         sources=sources
     )
 
+
+# ============================================================
+# GET ALL CONVERSATIONS
+# ============================================================
 
 @router.get(
     "/conversations",
@@ -128,12 +224,18 @@ def get_conversations(
         ConversationResponse(
             session_id=conversation.session_id,
             title=conversation.title,
-            created_at=str(conversation.created_at)
+            created_at=str(
+                conversation.created_at
+            )
         )
 
         for conversation in conversations
     ]
 
+
+# ============================================================
+# GET CHAT MESSAGES
+# ============================================================
 
 @router.get(
     "/messages/{session_id}",
@@ -149,13 +251,17 @@ def get_messages(
         session_id
     )
 
+
     if conversation is None:
+
         return []
+
 
     messages = get_chat_history(
         db,
         conversation.id
     )
+
 
     return [
 
@@ -165,8 +271,13 @@ def get_messages(
         )
 
         for message in messages
+
     ]
 
+
+# ============================================================
+# DELETE CONVERSATION
+# ============================================================
 
 @router.delete(
     "/conversation/{session_id}"
@@ -181,17 +292,22 @@ def remove_conversation(
         session_id
     )
 
+
     if conversation is None:
 
         return {
-            "message": "Conversation not found."
+            "message":
+                "Conversation not found."
         }
+
 
     delete_conversation(
         db,
         conversation
     )
 
+
     return {
-        "message": "Conversation deleted."
+        "message":
+            "Conversation deleted."
     }

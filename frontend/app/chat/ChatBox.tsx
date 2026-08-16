@@ -14,15 +14,18 @@ type Message = {
 };
 
 type Props = {
-  sessionId?: string;
+  sessionId: string;
 };
 
 export default function ChatBox({
-  sessionId = "frontend-test",
+  sessionId,
 }: Props) {
-  const [question, setQuestion] = useState("");
 
-  const [loading, setLoading] = useState(false);
+  const [question, setQuestion] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
 
   const [documents, setDocuments] =
     useState<string[]>([]);
@@ -36,36 +39,53 @@ export default function ChatBox({
   const messagesEndRef =
     useRef<HTMLDivElement | null>(null);
 
-  // ==========================================
-  // LOAD AVAILABLE DOCUMENTS
-  // ==========================================
 
   useEffect(() => {
-    async function loadDocuments() {
-      try {
-        const files = await getDocuments();
 
-        setAvailableDocuments(files);
+    async function loadDocuments() {
+
+      try {
+
+        console.log(
+          "Loading documents for session:",
+          sessionId
+        );
+
+        const files =
+          await getDocuments(
+            sessionId
+          );
+
+        setAvailableDocuments(
+          files
+        );
+
       } catch (error) {
+
         console.error(
           "Failed to load documents:",
           error
         );
+
       }
+
     }
 
     loadDocuments();
-  }, []);
 
+  }, [sessionId]);
   // ==========================================
   // AUTO SCROLL TO LATEST MESSAGE
   // ==========================================
 
   useEffect(() => {
+
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
     });
+
   }, [messages, loading]);
+
 
   // ==========================================
   // SELECT / UNSELECT DOCUMENT
@@ -74,28 +94,36 @@ export default function ChatBox({
   function toggleDocument(
     filename: string
   ) {
+
     setDocuments((currentDocuments) => {
+
       if (
         currentDocuments.includes(filename)
       ) {
+
         return currentDocuments.filter(
           (document) =>
             document !== filename
         );
+
       }
 
       return [
         ...currentDocuments,
         filename,
       ];
+
     });
+
   }
+
 
   // ==========================================
   // SEND QUESTION
   // ==========================================
 
   async function handleSend() {
+
     const trimmedQuestion =
       question.trim();
 
@@ -107,27 +135,37 @@ export default function ChatBox({
       return;
     }
 
+
     // ========================================
     // ADD USER MESSAGE IMMEDIATELY
     // ========================================
 
     const userMessage: Message = {
+
       id: crypto.randomUUID(),
+
       role: "user",
+
       content: trimmedQuestion,
+
     };
+
 
     setMessages((currentMessages) => [
       ...currentMessages,
       userMessage,
     ]);
 
+
     // Clear input immediately
+
     setQuestion("");
 
     setLoading(true);
 
+
     try {
+
       console.log(
         "Session ID:",
         sessionId
@@ -143,53 +181,78 @@ export default function ChatBox({
         documents
       );
 
+
       // ======================================
       // CALL BACKEND
       // ======================================
 
-      const data = await askQuestion(
-        sessionId,
-        trimmedQuestion,
-        documents
-      );
+      const data =
+        await askQuestion(
+          sessionId,
+          trimmedQuestion,
+          documents
+        );
+
 
       // ======================================
       // ADD AI RESPONSE
       // ======================================
 
       const assistantMessage: Message = {
+
         id: crypto.randomUUID(),
+
         role: "assistant",
+
         content:
           data.answer ||
           "I couldn't generate an answer.",
+
       };
+
 
       setMessages((currentMessages) => [
         ...currentMessages,
         assistantMessage,
       ]);
-    } catch (error) {
+
+    }
+
+    catch (error) {
+
       console.error(
         "Chat error:",
         error
       );
 
+
       const errorMessage: Message = {
+
         id: crypto.randomUUID(),
+
         role: "assistant",
+
         content:
           "Sorry, something went wrong while processing your question.",
+
       };
+
 
       setMessages((currentMessages) => [
         ...currentMessages,
         errorMessage,
       ]);
-    } finally {
-      setLoading(false);
+
     }
+
+    finally {
+
+      setLoading(false);
+
+    }
+
   }
+
 
   // ==========================================
   // ENTER KEY
@@ -198,22 +261,29 @@ export default function ChatBox({
   function handleKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
+
     if (
       event.key === "Enter" &&
       !event.shiftKey
     ) {
+
       event.preventDefault();
 
       handleSend();
+
     }
+
   }
+
 
   // ==========================================
   // RENDER
   // ==========================================
 
   return (
+
     <div className="flex h-full min-h-0 flex-col bg-[#050814] text-white">
+
 
       {/* =====================================
           DOCUMENT SELECTOR
@@ -224,6 +294,7 @@ export default function ChatBox({
         <div className="flex items-center justify-between">
 
           <div>
+
             <h2 className="text-base font-semibold text-white">
               Select documents
             </h2>
@@ -231,15 +302,22 @@ export default function ChatBox({
             <p className="mt-1 text-sm text-slate-500">
               Choose one or more PDFs to ask questions about.
             </p>
+
           </div>
 
+
           {documents.length > 0 && (
+
             <div className="rounded-full border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-xs font-medium text-purple-300">
+
               {documents.length} selected
+
             </div>
+
           )}
 
         </div>
+
 
         {/* DOCUMENT BUTTONS */}
 
@@ -262,6 +340,7 @@ export default function ChatBox({
                   );
 
                 return (
+
                   <button
                     key={filename}
                     type="button"
@@ -286,10 +365,13 @@ export default function ChatBox({
                           : "border-slate-600 bg-transparent"
                       }`}
                     >
+
                       {selected
                         ? "✓"
                         : ""}
+
                     </span>
+
 
                     {/* FILE NAME */}
 
@@ -298,14 +380,18 @@ export default function ChatBox({
                     </span>
 
                   </button>
+
                 );
+
               }
             )
+
           )}
 
         </div>
 
       </section>
+
 
       {/* =====================================
           CHAT MESSAGES
@@ -317,6 +403,7 @@ export default function ChatBox({
 
         {messages.length === 0 &&
           !loading && (
+
             <div className="flex h-full items-center justify-center">
 
               <div className="text-center">
@@ -336,7 +423,9 @@ export default function ChatBox({
               </div>
 
             </div>
+
           )}
+
 
         {/* MESSAGE LIST */}
 
@@ -350,6 +439,7 @@ export default function ChatBox({
                 "user";
 
               return (
+
                 <div
                   key={message.id}
                   className={`flex w-full gap-4 ${
@@ -362,10 +452,13 @@ export default function ChatBox({
                   {/* AI AVATAR */}
 
                   {!isUser && (
+
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-[#0d1424] text-xl">
                       🤖
                     </div>
+
                   )}
+
 
                   {/* MESSAGE */}
 
@@ -384,10 +477,13 @@ export default function ChatBox({
                           : "text-slate-500"
                       }`}
                     >
+
                       {isUser
                         ? "You"
                         : "AI"}
+
                     </div>
+
 
                     <div
                       className={`rounded-2xl px-5 py-4 text-sm leading-7 whitespace-pre-wrap ${
@@ -396,21 +492,27 @@ export default function ChatBox({
                           : "rounded-bl-md border border-slate-800 bg-[#0d1424] text-slate-200"
                       }`}
                     >
+
                       {message.content}
+
                     </div>
 
                   </div>
 
                 </div>
+
               );
+
             }
           )}
+
 
           {/* =================================
               LOADING MESSAGE
           ================================== */}
 
           {loading && (
+
             <div className="flex gap-4">
 
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-[#0d1424] text-xl">
@@ -440,7 +542,9 @@ export default function ChatBox({
               </div>
 
             </div>
+
           )}
+
 
           <div
             ref={messagesEndRef}
@@ -449,6 +553,7 @@ export default function ChatBox({
         </div>
 
       </div>
+
 
       {/* =====================================
           INPUT AREA
@@ -476,6 +581,7 @@ export default function ChatBox({
             className="h-14 min-w-0 flex-1 rounded-xl border border-slate-700 bg-[#0d1424] px-5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 disabled:cursor-not-allowed disabled:opacity-60"
           />
 
+
           <button
             type="button"
             onClick={handleSend}
@@ -486,12 +592,15 @@ export default function ChatBox({
             }
             className="h-14 rounded-xl bg-purple-600 px-7 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
+
             {loading
               ? "Thinking..."
               : "Send"}
+
           </button>
 
         </div>
+
 
         <p className="mt-3 text-center text-xs text-slate-600">
           AI responses are generated from your selected documents.
@@ -500,5 +609,6 @@ export default function ChatBox({
       </div>
 
     </div>
+
   );
 }

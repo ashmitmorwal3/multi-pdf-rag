@@ -22,8 +22,25 @@ UPLOAD_DIR.mkdir(
 
 @router.post("/upload")
 async def upload_pdf(
+    session_id: str,
     file: UploadFile = File(...)
 ):
+
+    # ==========================================
+    # VALIDATE SESSION
+    # ==========================================
+
+    if not session_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Session ID is required."
+        )
+
+
+    # ==========================================
+    # VALIDATE FILE
+    # ==========================================
 
     if file.content_type != "application/pdf":
 
@@ -33,41 +50,101 @@ async def upload_pdf(
         )
 
 
-    file_path = UPLOAD_DIR / file.filename
+    # ==========================================
+    # SAFE FILENAME
+    # ==========================================
 
+    filename = Path(
+        file.filename or "document.pdf"
+    ).name
+
+
+    # ==========================================
+    # CREATE SESSION DIRECTORY
+    # ==========================================
+
+    session_dir = (
+        UPLOAD_DIR / session_id
+    )
+
+    session_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+
+    # ==========================================
+    # SAVE PDF
+    # ==========================================
+
+    file_path = (
+        session_dir / filename
+    )
 
     contents = await file.read()
 
-
-    with open(file_path, "wb") as f:
+    with open(
+        file_path,
+        "wb"
+    ) as f:
 
         f.write(contents)
 
 
-    # Load PDF
+    # ==========================================
+    # LOAD PDF
+    # ==========================================
+
     documents = load_pdf(
         str(file_path)
     )
 
 
-    # Split into chunks
+    # ==========================================
+    # SPLIT INTO CHUNKS
+    # ==========================================
+
     chunks = split_documents(
         documents
     )
 
 
-    # Add chunks to Chroma
+    # ==========================================
+    # ADD SESSION + FILE METADATA
+    # ==========================================
+
+    for chunk in chunks:
+
+        if chunk.metadata is None:
+
+            chunk.metadata = {}
+
+        chunk.metadata["session_id"] = session_id
+
+        chunk.metadata["source"] = filename
+
+
+    # ==========================================
+    # ADD CHUNKS TO CHROMA
+    # ==========================================
+
     add_documents(
         chunks=chunks,
         embeddings=state.embeddings
     )
 
 
+    # ==========================================
+    # RESPONSE
+    # ==========================================
+
     return {
 
-        "filename": file.filename,
+        "filename": filename,
 
         "chunks": len(chunks),
+
+        "session_id": session_id,
 
         "message":
             "PDF uploaded and indexed successfully."
@@ -75,18 +152,71 @@ async def upload_pdf(
     }
 
 
+# ==========================================
+# GET DOCUMENTS FOR SESSION
+# ==========================================
+
 @router.get("/documents")
-def get_documents():
+def get_documents(
+    session_id: str
+):
+
+    # ==========================================
+    # VALIDATE SESSION
+    # ==========================================
+
+    if not session_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Session ID is required."
+        )
+
+
+    # ==========================================
+    # SESSION DIRECTORY
+    # ==========================================
+
+    session_dir = (
+        UPLOAD_DIR / session_id
+    )
+
+
+    # ==========================================
+    # NO DOCUMENTS
+    # ==========================================
+
+    if not session_dir.exists():
+
+        return {
+            "documents": []
+        }
+
+
+    # ==========================================
+    # GET PDFs
+    # ==========================================
 
     files = []
 
-    for file in UPLOAD_DIR.iterdir():
+    for file in session_dir.iterdir():
 
-        if file.is_file() and file.suffix.lower() == ".pdf":
+        if (
+            file.is_file()
+            and file.suffix.lower() == ".pdf"
+        ):
 
-            files.append(file.name)
+            files.append(
+                file.name
+            )
 
+
+    # ==========================================
+    # RESPONSE
+    # ==========================================
 
     return {
+
         "documents": files
+
     }
