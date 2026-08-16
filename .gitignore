@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Database
+data/*.db
+
+# Chroma generated data
+data/chroma/
+
+# Uploaded PDFs
+data/uploads/
+
+# Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Environment files
+frontend/.env
+frontend/.env.local
+
+# Misc
+.DS_Store
