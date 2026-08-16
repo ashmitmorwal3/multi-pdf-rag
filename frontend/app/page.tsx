@@ -1,28 +1,10 @@
-import UploadPDF from "@/components/UploadPDF";
+import { redirect } from "next/navigation";
+
 
 export default function Home() {
 
-  return (
+  const sessionId = crypto.randomUUID();
 
-    <div className="min-h-screen p-8">
+  redirect(`/chat/${sessionId}`);
 
-      <div className="mx-auto max-w-5xl">
-
-        <h1 className="text-3xl font-bold text-white">
-          Upload PDF
-        </h1>
-
-        <p className="mt-2 text-gray-400">
-          Add documents to your knowledge base.
-        </p>
-
-        <div className="mt-8">
-          <UploadPDF />
-        </div>
-
-      </div>
-
-    </div>
-
-  );
 }
