@@ -1,10 +1,13 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from app.core.config import GOOGLE_API_KEY
 
 
 def get_embedding_model():
 
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+    if not GOOGLE_API_KEY:
+        raise ValueError("GOOGLE_API_KEY is not set.")
 
-    return embeddings
+    return GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-2",
+        google_api_key=GOOGLE_API_KEY,
+    )
