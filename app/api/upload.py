@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import (
+    APIRouter,
+    UploadFile,
+    File,
+    HTTPException,
+    Form,
+)
 
 from app.core import state
 
@@ -20,15 +26,15 @@ UPLOAD_DIR.mkdir(
 )
 
 
+# ==========================================
+# UPLOAD PDF
+# ==========================================
+
 @router.post("/upload")
 async def upload_pdf(
-    session_id: str,
-    file: UploadFile = File(...)
+    session_id: str = Form(...),
+    file: UploadFile = File(...),
 ):
-
-    # ==========================================
-    # VALIDATE SESSION
-    # ==========================================
 
     if not session_id:
 
@@ -37,10 +43,6 @@ async def upload_pdf(
             detail="Session ID is required."
         )
 
-
-    # ==========================================
-    # VALIDATE FILE
-    # ==========================================
 
     if file.content_type != "application/pdf":
 
@@ -51,21 +53,10 @@ async def upload_pdf(
 
 
     # ==========================================
-    # SAFE FILENAME
-    # ==========================================
-
-    filename = Path(
-        file.filename or "document.pdf"
-    ).name
-
-
-    # ==========================================
     # CREATE SESSION DIRECTORY
     # ==========================================
 
-    session_dir = (
-        UPLOAD_DIR / session_id
-    )
+    session_dir = UPLOAD_DIR / session_id
 
     session_dir.mkdir(
         parents=True,
@@ -77,16 +68,11 @@ async def upload_pdf(
     # SAVE PDF
     # ==========================================
 
-    file_path = (
-        session_dir / filename
-    )
+    file_path = session_dir / file.filename
 
     contents = await file.read()
 
-    with open(
-        file_path,
-        "wb"
-    ) as f:
+    with open(file_path, "wb") as f:
 
         f.write(contents)
 
@@ -110,18 +96,16 @@ async def upload_pdf(
 
 
     # ==========================================
-    # ADD SESSION + FILE METADATA
+    # ADD SESSION ID TO CHUNK METADATA
     # ==========================================
 
     for chunk in chunks:
 
         if chunk.metadata is None:
-
             chunk.metadata = {}
 
         chunk.metadata["session_id"] = session_id
-
-        chunk.metadata["source"] = filename
+        chunk.metadata["source"] = file.filename
 
 
     # ==========================================
@@ -140,7 +124,7 @@ async def upload_pdf(
 
     return {
 
-        "filename": filename,
+        "filename": file.filename,
 
         "chunks": len(chunks),
 
@@ -161,10 +145,6 @@ def get_documents(
     session_id: str
 ):
 
-    # ==========================================
-    # VALIDATE SESSION
-    # ==========================================
-
     if not session_id:
 
         raise HTTPException(
@@ -173,18 +153,8 @@ def get_documents(
         )
 
 
-    # ==========================================
-    # SESSION DIRECTORY
-    # ==========================================
+    session_dir = UPLOAD_DIR / session_id
 
-    session_dir = (
-        UPLOAD_DIR / session_id
-    )
-
-
-    # ==========================================
-    # NO DOCUMENTS
-    # ==========================================
 
     if not session_dir.exists():
 
@@ -193,11 +163,8 @@ def get_documents(
         }
 
 
-    # ==========================================
-    # GET PDFs
-    # ==========================================
-
     files = []
+
 
     for file in session_dir.iterdir():
 
@@ -206,14 +173,8 @@ def get_documents(
             and file.suffix.lower() == ".pdf"
         ):
 
-            files.append(
-                file.name
-            )
+            files.append(file.name)
 
-
-    # ==========================================
-    # RESPONSE
-    # ==========================================
 
     return {
 
