@@ -1,9 +1,29 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+import { getSessionId } from "@/lib/session";
 
 export default function ChatPage() {
 
-  const sessionId = crypto.randomUUID();
+  const router = useRouter();
 
-  redirect(`/chat/${sessionId}`);
+  useEffect(() => {
 
+    const sessionId = getSessionId();
+
+    router.replace(
+      `/chat/${sessionId}`
+    );
+
+  }, [router]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#050814] text-white">
+      <p className="text-slate-400">
+        Loading your chat...
+      </p>
+    </div>
+  );
 }
